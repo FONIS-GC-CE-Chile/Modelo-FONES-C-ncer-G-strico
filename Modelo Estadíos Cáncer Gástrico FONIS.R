@@ -67,18 +67,18 @@ p.4cH <- 0.03 # probability to become healthy when stage 4 clinical
 
 # Probability of transition when prevention (llenar según efectividades)
 
-p.pH1p <- 0.05  # probability to become stage 1 preclinical when healthy
-p.p1p1c <- 0.05  # probability to become stage 1 clinical when stage 1 preclinical
-p.p1p2p <- 0.05  # probability to become stage 2 preclinical when stage 1 preclinical
-p.p2p2c <- 0.05  # probability to become stage 2 clinical when stage 2 preclinical
-p.p2p3p <- 0.05  # probability to become stage 3 preclinical when stage 2 preclinical
-p.p3p3c <- 0.05  # probability to become stage 3 clinical when stage 3 preclinical
-p.p3p4p <- 0.05  # probability to become stage 4 preclinical when stage 3 preclinical
-p.p4p4c <- 0.05  # probability to become stage 4 clinical when stage 4 preclinical
-p.p1cH <- 0.08 # probability to become healthy when stage 1 clinical
-p.p2cH <- 0.05 # probability to become healthy when stage 2 clinical 
-p.p3cH <- 0.04 # probability to become healthy when stage 3 clinical 
-p.p4cH <- 0.03 # probability to become healthy when stage 4 clinical 
+p.pH1p <- p.H1p*0.5  # probability to become stage 1 preclinical when healthy
+p.p1p1c <- p.1p1c* 0.5  # probability to become stage 1 clinical when stage 1 preclinical
+p.p1p2p <- p.1p2p * 0.5  # probability to become stage 2 preclinical when stage 1 preclinical
+p.p2p2c <- p.2p2c* 0.5  # probability to become stage 2 clinical when stage 2 preclinical
+p.p2p3p <- p.2p3p * 0.5  # probability to become stage 3 preclinical when stage 2 preclinical
+p.p3p3c <- p.3p3c* 0.5  # probability to become stage 3 clinical when stage 3 preclinical
+p.p3p4p <- p.3p4p* 0.5  # probability to become stage 4 preclinical when stage 3 preclinical
+p.p4p4c <- p.4p4c* 0.5  # probability to become stage 4 clinical when stage 4 preclinical
+p.p1cH <- p.1cH * 0.5 # probability to become healthy when stage 1 clinical
+p.p2cH <- p.2cH * 0.5 # probability to become healthy when stage 2 clinical 
+p.p3cH <- p.3cH* 0.5 # probability to become healthy when stage 3 clinical 
+p.p4cH <- p.4cH * 0.5 # probability to become healthy when stage 4 clinical 
 
 #Hazard ratio 
 
