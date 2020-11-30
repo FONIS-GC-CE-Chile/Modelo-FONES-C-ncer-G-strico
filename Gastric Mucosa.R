@@ -32,6 +32,7 @@ rm(list = ls())      # clear memory (removes all the variables from the workspac
 
 #### 01 Load packages ####
 library(ggplot2)
+devtools::install_github("DARTH-git/dampack")
 library(dampack)
 
 #### 02 Input Model Parameters ####
@@ -43,17 +44,20 @@ n.str <- length(v.names.str)
 
 ## Markov model parameters
 age     <- 20                                 # age at baseline
-max.age <- 100                                 # maximum age of follow up
+max.age <- 100                                # maximum age of follow up
 n.t  <- max.age - age                         # time horizon, number of cycles
 
-v.n  <- c("Normalhpn", "Normalhpp", "Gastritishpn", "Gastritishpp", "Atrophyhpn", "Atrophyhpp", "Intestinalhpn", "Intestinalhpp", "Dysplasiahpn", "Dysplasiahpp", "Dead")    # state names
+v.n  <- c("Normalhpn", "Normalhpp", 
+          "Gastritishpn", "Gastritishpp", 
+          "Atrophyhpn", "Atrophyhpp", 
+          "Intestinalhpn", "Intestinalhpp", 
+          "Dysplasiahpn", "Dysplasiahpp", # Dyplasia state could be merged (hp - y hp +)
+          "Dead")    # state names
 n.s  <- length(v.n)                     # number of states
-n.t  <- 60                              # number of cycles
 
 p.NnD <- 0.02  # probability to die when Normal mucosa with Helicobacter pilory negative
 
 #Probability of transition without prevention
-
 p.NnGn <- 0.05  # probability to become Gastritis hp(-) when Normal hp(-)
 p.GnAn <- 0.05  # probability to become Atrophy hp(-) when Gastritis hp(-)
 p.AnIn <- 0.05  # probability to become Intestinal Metaplasia hp (-) when Atrophy hp(-) 
@@ -82,11 +86,14 @@ p.IpAp <- 0.05  # probability to become Atrophy hp(+) when Intestinal Metaplasia
 p.ApGp <- 0.05  # probability to become Gastritis hp(+) when Atrophy hp(+) 
 p.GpNp <- 0.05  # probability to become Normal hp (+) when Gastritis hp(+)
 
-
 #Probability of transition with prevention strategy 1 
+t.effect.NnGn <- t.effect.GnAn <- 0.7 # This value should reflect treatment effectiveness in increase transition probability
+t.ehpylori <- 0.8 # This value reflect probability of erradication after treatment
+t.dhpylori <- 0.95 # This value reflect the probability of diagnostic strategy 1 to detect H. pylori cases (test sensitivity)
+t.dehpylori <- 0.05 # This value reflect the probability of diagnostic strategy 1 to incorrectly clasify H. pylori - cases as + (test 1-specificity)
 
-p.pNnGn <- p.NnGn * 0.5  # probability to become Gastritis hp(-) when Normanl hp(-)
-p.pGnAn <- p.GnAn * 0.5  # probability to become Atrophy hp(-) when Gastritis hp(-)
+p.pNnGn <- p.NnGn * t.effect.NnGn  # probability to become Gastritis hp(-) when Normanl hp(-)
+p.pGnAn <- p.GnAn * t.effect.GnAn  # probability to become Atrophy hp(-) when Gastritis hp(-)
 p.pAnIn <- p.AnIn * 0.5  # probability to become Intestinal Metaplasia hp (-) when Atrophy hp(-) 
 p.pInDn <- p.InDn * 0.5  # probability to become Dysplasia hp(-) when Intestinal Metaplasia hp(-)
 p.pDnIn <- p.DnIn * 0.5 # probability to become Intestinal hp(-) when Dysplasia hp(-)
@@ -94,7 +101,7 @@ p.pInAn <- p.InAn * 0.5  # probability to become Atrophy hp(-) when Intestinal M
 p.pAnGn <- p.AnGn * 0.5  # probability to become Gastritis hp(-) when Atrophy hp(-)
 p.pGnNn <- p.GnNn * 0.5  # probability to become Normal hp(-) when Gastritis hp(-)
 p.pGnGp <- p.GnGp * 0.5  # probability to become Gastritis hp(-) when Gastritis hp(+)
-p.pGpGn <- p.GpGn * 0.5 # probability to become Gastritis hp(+) when Gastritis hp(-)
+p.pGpGn <- t.ehpylori # probability to become Gastritis hp(+) when Gastritis hp(-)
 p.pAnAp <- p.AnAp * 0.5 # probability to become Atrophy hp(-) when Atrophy hp(+)
 p.pApAn <- p.ApAn * 0.5 # probability to become Atrophy hp(+) when Atrophy hp(-)
 p.pInIp <- p.InIp * 0.5 # probability to become Intestinal hp(-) when Intestinal hp(+)
@@ -115,41 +122,27 @@ p.pIpAp <- p.IpAp * 0.5  # probability to become Atrophy hp(+) when Intestinal M
 p.pApGp <-p.ApGp * 0.5  # probability to become Gastritis hp(+) when Atrophy hp(+) 
 p.pGpNp <- p.GpNp * 0.5  # probability to become Normal hp (+) when Gastritis hp(+)
 
-
-#Hazard ratio 
-
-hr.Np <- 1 #hazard ratio of death in Normal helicobacter(+) vs healthy
-hr.Gn <- 1 #hazard ratio of death in Gastritis helicobacter(-) vs healthy
-hr.Gp <- 1 #hazard ratio of death in Gastritis helicobacter(+) vs healthy
-hr.An <- 1 #hazard ratio of death in Atrophy helicobacter (-) vs healthy
-hr.Ap <- 1 #hazard ratio of death in Atrophy helicobacter (+) vs healthy
-hr.In <- 1 #hazard ratio of death in Intestional helicobacter (-) vs healthy
-hr.Ip <- 1 #hazard ratio of death in Intestinal helicobacter (+) vs healthy
-hr.Dn <- 1 #hazard ratio of death in Dysplasia helicobacter (-) vs healthy
-hr.Dp <- 1 #hazard ratio of death in Dysplasia helicobacter (+) vs healthy
-
+# Death rates (all equal. Same death riisk s assumed across states)
 r.NnD    <- - log(1 - p.NnD) # rate of death in healthy
-r.NpD   <- hr.Np * r.NnD  	 # rate of death in Normal helicobacter (+)
-r.GnD   <- hr.Gn * r.NnD  	 # rate of death in Gastritis helicobacter (-)
-r.GpD   <- hr.Gp * r.NnD  	 # rate of death in Gastritis helicobacter (+)
-r.AnD   <- hr.An * r.NnD  	 # rate of death in Atrophy helicobacter (-)
-r.ApD   <- hr.Ap * r.NnD  	 # rate of death in Atrophy helicobacter (+)
-r.InD   <- hr.In * r.NnD  	 # rate of death in Intestinal helicobacter (-)
-r.IpD   <- hr.Ip * r.NnD     # rate of death in Intestinal helicobacter (+)
-r.DnD   <- hr.Dn * r.NnD  	 # rate of death in Dysplasia helicobacter (-)
-r.DpD   <- hr.Dp * r.NnD     # rate of death in Dysplasia helicobacter (+)
-
+r.NpD   <- r.NnD  	 # rate of death in Normal helicobacter (+)
+r.GnD   <- r.NnD  	 # rate of death in Gastritis helicobacter (-)
+r.GpD   <- r.NnD  	 # rate of death in Gastritis helicobacter (+)
+r.AnD   <- r.NnD  	 # rate of death in Atrophy helicobacter (-)
+r.ApD   <- r.NnD  	 # rate of death in Atrophy helicobacter (+)
+r.InD   <- r.NnD  	 # rate of death in Intestinal helicobacter (-)
+r.IpD   <- r.NnD     # rate of death in Intestinal helicobacter (+)
+r.DnD   <- r.NnD  	 # rate of death in Dysplasia helicobacter (-)
+r.DpD   <- r.NnD     # rate of death in Dysplasia helicobacter (+)
 
 p.NpD <- 1- exp(-r.NpD)  # probability to die when Normal helicobacter (+)
-p.GnD <- 1- exp(-r.GnD) # probability to die when Gastritis helicobacter (-)
-p.GpD <- 1- exp(-r.GpD) # probability to die when Gastritis helicobacter (+)
-p.AnD <- 1- exp(-r.AnD) # probability to die when Atrophy helicobacter (-)
-p.ApD <- 1- exp(-r.ApD) # probability to die when Atrophy helicobacter (+)
+p.GnD <- 1- exp(-r.GnD)  # probability to die when Gastritis helicobacter (-)
+p.GpD <- 1- exp(-r.GpD)  # probability to die when Gastritis helicobacter (+)
+p.AnD <- 1- exp(-r.AnD)  # probability to die when Atrophy helicobacter (-)
+p.ApD <- 1- exp(-r.ApD)  # probability to die when Atrophy helicobacter (+)
 p.InD <- 1- exp(-r.InD)  # probability to die when Intestinal helicobacter (-) 
 p.IpD <- 1- exp(-r.IpD)  # probability to die when Intestinal helicobacter (+) 
 p.DnD <- 1- exp(-r.DnD)  # probability to die when Dysplasia helicobacter (-) 
 p.DpD <- 1- exp(-r.DpD)  # probability to die when Dysplasia helicobacter (+) 
-
 
 # Costs and utilities  
 c.Nn  <- 400                     # cost of remaining one cycle Normal helicobacter (-)
@@ -158,24 +151,26 @@ c.Gn  <- 400                     # cost of remaining one cycle Gastritis helicob
 c.Gp  <- 400                     # cost of remaining one cycle Gastritis helicobacter (+)
 c.An  <- 400                     # cost of remaining one cycle Atrophy helicobacter (-)
 c.Ap  <- 400                     # cost of remaining one cycle Atrophy helicobacter (+)
-c.In  <- 4000                     # cost of remaining one cycle Intestinal helicobacter (-) 
-c.Ip  <- 8000                     # cost of remaining one cycle Intestinal helicobacter (+) 
-c.Dn  <- 12000                     # cost of remaining one cycle Dysplasia helicobacter (-) 
-c.Dp  <- 15000                     # cost of remaining one cycle Dysplasia helicobacter (+)
+c.In  <- 4000                    # cost of remaining one cycle Intestinal helicobacter (-) 
+c.Ip  <- 8000                    # cost of remaining one cycle Intestinal helicobacter (+) 
+c.Dn  <- 12000                   # cost of remaining one cycle Dysplasia helicobacter (-) 
+c.Dp  <- 15000                   # cost of remaining one cycle Dysplasia helicobacter (+)
 c.D  <- 0  # cost of remaining one cycle dead
-c.prev <- 200 # cost of prevention strategy 
+c.diag <- 200 # cost of prevention strategy 
+c.trt <- 300
 
+# Single utility or hp+ / hp- utility? (pedir a Cristian)
 u.Nn  <- 1                     # utility when Normal helicobacter (-)
 u.Np  <- 1                     # utility when Normal helicobacter (+)
 u.Gn  <- 1                     # utility when Gastritis helicobacter (-)
-u.Gp  <- 0.7                     # utility when Gastritis helicobacter (+)
-u.An  <- 0.8                     # utility when Atrophy helicobacter (-)
-u.Ap  <- 0.5                     # utility when Atrophy helicobacter (+)
-u.In  <- 0.4                     # utility when Intestinal helicobacter (-)
-u.Ip  <- 0.3                     # utility when Intestinal helicobacter (+)
-u.Dn  <- 0.2                     # utility when Dysplasia helicobacter (-)
-u.Dp  <- 0.2                     # utility when Dysplasia helicobacter (+) 
-u.D  <- 0                       # utility when dead
+u.Gp  <- 0.7                   # utility when Gastritis helicobacter (+)
+u.An  <- 0.8                   # utility when Atrophy helicobacter (-)
+u.Ap  <- 0.5                   # utility when Atrophy helicobacter (+)
+u.In  <- 0.4                   # utility when Intestinal helicobacter (-)
+u.Ip  <- 0.3                   # utility when Intestinal helicobacter (+)
+u.Dn  <- 0.2                   # utility when Dysplasia helicobacter (-)
+u.Dp  <- 0.2                   # utility when Dysplasia helicobacter (+) 
+u.D  <- 0                      # utility when dead
 
 # Discounting factor
 d.r  <- 0.03                    # equal discount of costs and QALYs by 3%
@@ -192,8 +187,7 @@ m.M_no_prev <- m.M_prev <- matrix(NA,
 
 head(m.M_no_prev) # show first 6 rows of the matrix 
 
-# The cohort starts as healthy
-
+# The cohort starts as healthy (modify accordingly to prevalence of each state at t0)
 m.M_no_prev[1, ] <- m.M_prev[1, ] <- c(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)                     # initialize first cycle of Markov trace
 
 #### 03.2 Transition probability MATRIX ####
@@ -246,7 +240,7 @@ m.P_noprev["Atrophyhpn", "Atrophyhpp"]    <- p.AnAp
 m.P_noprev["Atrophyhpn", "Gastritishpn"]    <- p.AnGn
 m.P_noprev["Atrophyhpn", "Dead"]    <- p.AnD
 
-### From Atrophy Helicobacter (-) 
+### From Atrophy Helicobacter (+) 
 m.P_noprev["Atrophyhpp", "Atrophyhpp"]    <- 1 - p.ApIp - p.ApAn - p.ApGp - p.ApD
 m.P_noprev["Atrophyhpp", "Intestinalhpp"]    <- p.ApIp
 m.P_noprev["Atrophyhpp", "Atrophyhpn"]    <- p.ApAn
@@ -365,11 +359,12 @@ m.P_prev["Dead", "Dead"] <- 1
 # check rows add up to 1
 rowSums(m.P_prev)
 
-
 #### 04 Run Markov model ####
+v.trt <- rbinom(n.t,1,0.15) # Vector of treatment requires to be defined based on times of screening (3, 5 y 10 años)
+
 for (t in 1:n.t){                                         # loop through the number of cycles
   m.M_no_prev[t + 1, ] <- t(m.M_no_prev[t, ]) %*% m.P_noprev # estimate the Markov trace for cycle the next cycle (t + 1)
-  m.M_prev[t + 1, ]    <- t(m.M_prev[t, ])    %*% m.P_prev   # estimate the Markov trace for cycle the next cycle (t + 1)
+  m.M_prev[t + 1, ]    <- t(m.M_prev[t, ]) %*% if(v.trt[t]==1){m.P_prev} else {m.P_noprev} # estimate the Markov trace for cycle the next cycle (t + 1)
 } # close the loop
 
 head(m.M_no_prev)  # show the first 6 lines of the matrix
@@ -382,21 +377,21 @@ matplot(m.M_no_prev, type = 'l',
         main = "Cohort Trace")              # create a plot of the data
 legend("topright", v.n, col = 1:n.s,lty = 1:n.s, bty = "n")  # add a legend to the graph
 
-#### 05.2 Overall Survival (OS) #####
-v.os_no_prev <- 1 - m.M_no_prev[, "Dead"]       # calculate the overall survival (OS) probability for no prevention
-
-plot(0:n.t, v.os_no_prev, type = 'l', 
-     ylim = c(0, 1),
-     ylab = "Survival probability",
-     xlab = "Cycle",
-     main = "Overall Survival")             # create a simple plot showing the OS
-grid(nx = n.t, ny = 10, col = "lightgray", lty = "dotted", lwd = par("lwd"), equilogs = TRUE) # add grid 
+# #### 05.2 Overall Survival (OS) #####
+# v.os_no_prev <- 1 - m.M_no_prev[, "Dead"]       # calculate the overall survival (OS) probability for no prevention
+# 
+# plot(0:n.t, v.os_no_prev, type = 'l', 
+#      ylim = c(0, 1),
+#      ylab = "Survival probability",
+#      xlab = "Cycle",
+#      main = "Overall Survival")             # create a simple plot showing the OS
+# grid(nx = n.t, ny = 10, col = "lightgray", lty = "dotted", lwd = par("lwd"), equilogs = TRUE) # add grid 
 
 #### 05.2.1 Life Expectancy (LE) #####
 v.le <- sum(v.os_no_prev)                       # summing probablity of OS over time  (i.e. life expectancy)
 
-#### 05.3 Disease prevalence #####
-v.preva <- rowSums(m.M_no_prev[, c("Normalhpn", "Normalhpp", "Gastritishpn", "Gastritishpp", "Atrophyhpn", "Atrophyhpp", "Intestinalhpn", "Intestinalhpp", "Dysplasiahpn", "Dysplasiahpp" )])/v.os_no_prev
+#### 05.3 Disease prevalence ##### Revisar (para cada estado)
+v.preva <- rowSums(m.M_no_prev[, c("Normalhpn", "Normalhpp", "Gastritishpn", "Gastritishpp", "Atrophyhpn", "Atrophyhpp", "Intestinalhpn", "Intestinalhpp", "Dysplasiahpn", "Dysplasiahpp")])/v.os_no_prev
 plot(v.preva,
      ylim = c(0, 1),
      ylab = "Prevalence",
@@ -411,14 +406,15 @@ plot(0:n.t, v.prop.Dpp,
      main = "Proportion of sick in Dysplasiahpp", 
      col = "black", type = "l")
 
-
 #### 06 Compute Cost-Effectiveness Outcomes ####
 ### Vectors with costs and utilities by treatment
 v.u_no_prev <- c(u.Nn, u.Np, u.Gn, u.Gp, u.An, u.Ap, u.In, u.Ip, u.Dn, u.Dp, u.D)
 v.u_prev    <- c(u.Nn, u.Np, u.Gn, u.Gp, u.An, u.Ap, u.In, u.Ip, u.Dn, u.Dp, u.D)
 
 v.c_no_prev <- c(c.Nn, c.Np, c.Gn, c.Gp, c.An, c.Ap, c.In, c.Ip, c.Dn, c.Dp, c.D)
-v.c_prev    <- c(c.Nn, c.Np, c.Gn, c.Gp, c.An, c.Ap, c.In, c.Ip, c.Dn, c.Dp, c.D)
+v.c_prev    <- c(c.Nn + c.diag, c.Np + c.diag, c.Gn + c.diag, c.Gp + c.diag, c.An + c.diag, 
+                 c.Ap + c.diag, c.In + c.diag, c.Ip + c.diag, c.Dn + c.diag, c.Dp + c.diag, c.D) 
+# Pendant to add treatment cost to positive diagnostic test (c.trt * p.pos). Pendant to define p.pos more accurately
 
 #### 06.1 Mean Costs and QALYs for Treatment and NO Treatment ####
 # estimate mean QALys and costs
@@ -446,7 +442,7 @@ m.ce <- data.frame(Strategy = v.names.str,
                    Effect   = v.tu.d)
 m.ce
 
-#### 07 Compute ICERs of FONIS CaGa model ####
+#### 07 Compute ICERs of FONIS CaGa model #### Revisar función calculate_icers
 m.cea <- calculate_icers(cost = m.ce$Cost,
                          effect = m.ce$Effect,
                          strategies = m.ce$Strategy)
